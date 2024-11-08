@@ -1,6 +1,5 @@
 // script.js
 
-// Grid configuration
 const GRID = [
     "FITSISAQUARTERHALFED",
     "ATWENTYTENFIVEANTOWN",
@@ -11,12 +10,11 @@ const GRID = [
     "SNOONTWELVESOCLOCKEN"
 ];
 
-// Word positions in the grid (row, startCol, endCol)
 const WORD_POSITIONS = {
     'IT': [[0, 1, 2]],
     'IS': [[0, 4, 5]],
-    'A': [[0, 5, 5]],
-    'QUARTER': [[0, 6, 12]],
+    'A': [[0, 6, 6]],
+    'QUARTER': [[0, 7, 13]],
     'HALF': [[0, 14, 17]],
     'TWENTY': [[1, 1, 6]],
     'TEN': [[1, 7, 9]],
@@ -25,7 +23,7 @@ const WORD_POSITIONS = {
     'MINUTES': [[2, 7, 13]],
     'PAST': [[2, 14, 17]],
     'AFTER': [[3, 1, 5]],
-    'TO': [[3, 5, 6]],
+    'TO': [[3, 6, 7]],
     'ONE': [[3, 7, 9]],
     'SEVEN': [[3, 10, 14]],
     'FOUR': [[4, 2, 5]],
@@ -37,10 +35,9 @@ const WORD_POSITIONS = {
     'THREE': [[5, 13, 17]],
     'NOON': [[6, 1, 4]],
     'TWELVE': [[6, 5, 10]],
-    'OCLOCK': [[6, 11, 16]]
+    'OCLOCK': [[6, 12, 17]]
 };
 
-// Initialize the grid
 function initializeGrid() {
     const gridContainer = document.getElementById('letter-grid');
     
@@ -61,16 +58,19 @@ function initializeGrid() {
     });
 }
 
-// Find active words based on current time
 function findActiveWords() {
     const now = new Date();
     let hours = now.getHours();
     let minutes = now.getMinutes();
     let activeWords = new Set(['IT', 'IS']);
 
-    // Handle noon special case
+    // Handle midnight and noon special cases
     if (hours === 12 && minutes < 5) {
         activeWords.add('NOON');
+        activeWords.add('OCLOCK');
+        return activeWords;
+    } else if (hours === 0 && minutes < 5) {
+        activeWords.add('TWELVE');
         activeWords.add('OCLOCK');
         return activeWords;
     }
@@ -79,24 +79,52 @@ function findActiveWords() {
     if (hours > 12) hours -= 12;
     if (hours === 0) hours = 12;
 
-    // Handle minutes
-    if (minutes >= 5) {
-        if (Math.abs(minutes - 15) <= 2) {
-            activeWords.add('QUARTER');
-        } else if (Math.abs(minutes - 30) <= 2) {
-            activeWords.add('HALF');
-        } else {
-            if (minutes > 28) activeWords.add('HALF');
-            if (minutes > 20) activeWords.add('TWENTY');
-            if (minutes % 10 >= 5) activeWords.add('FIVE');
-            if (minutes > 0) activeWords.add('MINUTES');
-        }
-        activeWords.add('PAST');
+    // Handle "almost" case for the upcoming hour (at 55+ minutes)
+    if (minutes >= 55) {
+        activeWords = new Set(['IT', 'IS', 'ALMOST']);
+        hours = (hours % 12) + 1;
+        if (hours === 13) hours = 1;
+        const hourWords = [
+            'TWELVE', 'ONE', 'TWO', 'THREE', 'FOUR', 'FIVE',
+            'SIX', 'SEVEN', 'EIGHT', 'NINE', 'TEN', 'ELEVEN'
+        ];
+        activeWords.add(hourWords[hours % 12]);
+        return activeWords;
     }
 
-    // Handle "almost" for times close to the hour
-    if (minutes >= 55) {
-        activeWords.add('ALMOST');
+    // Determine if we're past the half-hour
+    const isAfterHalf = minutes > 30;
+    
+    // Adjust minutes and hours for "to" case
+    if (isAfterHalf) {
+        minutes = 60 - minutes;
+        hours = (hours % 12) + 1;
+        if (hours === 13) hours = 1;
+    }
+
+    // Handle minutes
+    if (minutes >= 5) {
+        if (minutes >= 13 && minutes <= 17) {
+            activeWords.add('QUARTER');
+        } else if (minutes >= 28 && minutes <= 32) {
+            activeWords.add('HALF');
+        } else if (minutes >= 8 && minutes <= 12) {
+            activeWords.add('TEN');
+            if (!isAfterHalf) activeWords.add('MINUTES');
+        } else if (minutes >= 3 && minutes <= 7) {
+            activeWords.add('FIVE');
+            activeWords.add('MINUTES');
+        } else if (minutes >= 18 && minutes <= 22) {
+            activeWords.add('TWENTY');
+            if (!isAfterHalf) activeWords.add('MINUTES');
+        } else if (minutes >= 23 && minutes <= 27) {
+            activeWords.add('TWENTY');
+            activeWords.add('FIVE');
+            activeWords.add('MINUTES');
+        }
+        
+        // Add 'TO' or 'PAST' based on whether we're in the first or second half of the hour
+        activeWords.add(isAfterHalf ? 'TO' : 'PAST');
     }
 
     // Add hour word
@@ -113,17 +141,14 @@ function findActiveWords() {
     return activeWords;
 }
 
-// Update the display
 function updateDisplay() {
     const activeWords = findActiveWords();
     const allLetters = document.querySelectorAll('.letter');
     
-    // First, reset all letters to inactive
     allLetters.forEach(letter => {
         letter.classList.remove('active');
     });
 
-    // Then highlight active words
     activeWords.forEach(word => {
         const positions = WORD_POSITIONS[word];
         if (positions) {
@@ -141,12 +166,10 @@ function updateDisplay() {
     });
 }
 
-// Initialize and start the clock
 function initClock() {
     initializeGrid();
     updateDisplay();
     setInterval(updateDisplay, 1000);
 }
 
-// Start when the page loads
 document.addEventListener('DOMContentLoaded', initClock);
