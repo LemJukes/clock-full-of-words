@@ -23,7 +23,8 @@ const WORD_POSITIONS = {
     'MINUTES': [[2, 7, 13]],
     'PAST': [[2, 14, 17]],
     'AFTER': [[3, 1, 5]],
-    'TO': [[1, 16, 17]],
+    'TO': [[3, 6, 7]],
+    'TO_ONE': [[1, 16, 17]],
     'ONE': [[3, 7, 9]],
     'SEVEN': [[3, 10, 14]],
     'FOUR': [[4, 2, 5]],
@@ -84,11 +85,16 @@ function findActiveWords() {
         activeWords = new Set(['IT', 'IS', 'ALMOST']);
         hours = (hours % 12) + 1;
         if (hours === 13) hours = 1;
+        
         const hourWords = [
             'TWELVE', 'ONE', 'TWO', 'THREE', 'FOUR', 'FIVE',
             'SIX', 'SEVEN', 'EIGHT', 'NINE', 'TEN', 'ELEVEN'
         ];
         activeWords.add(hourWords[hours % 12]);
+        
+        // Use the alternate "TO" for the 'almost' one o'clock case
+        activeWords.add(minutes >= 55 && hours === 1 ? 'TO_ONE' : 'TO');
+        
         return activeWords;
     }
 
